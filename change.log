@@ -1,0 +1,8 @@
+2023.01.22
+Release
+
+2023.01.23
+-Fix character coding issue
+-Fix word repeat issue at wordlist
+-Remove API DNS enumeration (No need API key)
+-HTML headers added to HTML output
