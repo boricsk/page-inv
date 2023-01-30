@@ -6,3 +6,6 @@ Release
 -Fix word repeat issue at wordlist
 -Remove API DNS enumeration (No need API key)
 -HTML headers added to HTML output
+
+2023.01.30
+-Certification info query function added

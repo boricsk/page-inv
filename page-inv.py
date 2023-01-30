@@ -9,13 +9,25 @@ from tkinter import simpledialog,filedialog
 from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox
 from pathlib import Path
-import whois
+import whois, json
 import dns.resolver
 
 DNSRecordTypes = ["A", "AAAA", "CNAME", "MX", "NS", "SOA", "TXT"]
 
+def getCertificateInfo():
+    try:
+        domain = getDomainName(httpAddress.get())
+        certRequest = f'https://crt.sh/?q={domain}&output=json'
+        certResp = requests.get(certRequest)
+        outputSource.delete(1.0, END)
+        html = certResp.content.decode(getCharCoding(resp.headers['content-type']))
+        JSONObject = json.loads(html)
+        outputSource.insert(END,json.dumps(JSONObject, indent=2))
+    except Exception as e:
+        Messagebox.show_error(message=f"{e}",title="Navigation error")
+
 def main():
-    root = tb.Window(themename="superhero",title="WEB page investigator")
+    root = tb.Window(themename="superhero",title="WEB page investigate")
     root.geometry('1024x768')
     #menubar
     bttnBar = tb.Frame(root, style='primary.TFrame')
@@ -26,7 +38,8 @@ def main():
                   'comment':'comment-code.png',
                   'disk':'disk.png',
                   'dns':'fingerprint.png',
-                  'qrcode':'qrcode.png'}
+                  'qrcode':'qrcode.png',
+                  'certificate':'cert.png'}
     photoimages = []
     for key, val in imageFiles.items():
         _path = imgPath / val
@@ -54,7 +67,7 @@ def main():
     btnFunc2.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #receive DNS information bttn
-    btnFunc2 = tb.Button(
+    btnFunc3 = tb.Button(
         master = bttnBar,
         text="DNS info",
         compound=LEFT,
@@ -62,10 +75,21 @@ def main():
         style="solid",
         image="dns"
     )
-    btnFunc2.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnFunc3.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    
+    #receive certification information bttn
+    btnFunc5 = tb.Button(
+        master = bttnBar,
+        text="Cert info",
+        compound=LEFT,
+        command=getCertificateInfo,
+        style="solid",
+        image="certificate"
+    )
+    btnFunc5.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #save output bttn
-    btnFunc2 = tb.Button(
+    btnFunc4 = tb.Button(
         master = bttnBar,
         text="Save output",
         compound=LEFT,
@@ -73,7 +97,7 @@ def main():
         style="solid",
         image="disk"
     )
-    btnFunc2.pack(side = RIGHT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnFunc4.pack(side = RIGHT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #input
     optionText = "Enter web address"
@@ -105,21 +129,25 @@ def main():
     
     root.mainloop()
 
-def receiveHTMLData():
-    global html, resp
+def getCharCoding(contentType):
     startPos = 0
     i=0
+    for char in contentType:
+            if char == '=':
+                startPos = i
+            i += 1
+    return contentType[startPos:]
+    
+    
+def receiveHTMLData():
+    global html, resp
+    
     try:
         url = httpAddress.get()
         resp = requests.get(url)
         httpSource.delete('1.0',END)
         outputSource.delete(1.0, END)
-        contentType = resp.headers['content-type']
-        for char in contentType:
-            if char == '=':
-                startPos = i
-            i += 1
-        html = resp.content.decode(contentType[startPos:])
+        html = resp.content.decode(getCharCoding(resp.headers['content-type']))
         soup = BeautifulSoup(html,'html.parser')
         httpSource.insert(END,'HEADERS\n')
         httpSource.insert(END,resp.headers)
@@ -135,20 +163,14 @@ def createWordlist():
         wordList = []
         if charNum == 0:
             outputSource.delete('1.0',END)
-            html = resp.content.decode()
-            soup = BeautifulSoup(html,'html.parser')
-            raw_text = soup.get_text()
-            output = re.findall(r'\w+', raw_text)
+            output = re.findall(r'\w+', BeautifulSoup(resp.content.decode(),'html.parser').get_text())
             for i in range(len(output)):
                 if output[i] not in wordList:
                     wordList.append(output[i])
                     outputSource.insert(END,output[i]+'\n')
         else:
             outputSource.delete('1.0',END)
-            html = resp.content.decode()
-            soup = BeautifulSoup(html,'html.parser')
-            raw_text = soup.get_text()
-            output = re.findall(r'\w+', raw_text)
+            output = re.findall(r'\w+', BeautifulSoup(resp.content.decode(),'html.parser').get_text())
             for i in range(len(output)):
                 if len(output[i]) >= charNum:
                     if output[i] not in wordList:
@@ -161,10 +183,10 @@ def createWordlist():
         Messagebox.show_error(message=f"{e}",title="Navigation error")
 
 def showComments():
-    try:
-        
+
+    try:       
         outputSource.delete('1.0',END)
-        html = resp.content.decode()
+        html = resp.content.decode(getCharCoding(resp.headers['content-type']))
         soup = BeautifulSoup(html,'html.parser')
         comments = soup.find_all(string=lambda text: isinstance(text, Comment))
         for i in range(len(comments)):
@@ -181,18 +203,22 @@ def saveOutput():
     except Exception as e:
         Messagebox.show_error(message=f"{e}",title="File I/O error")
 
-def receiveDnsData():
+def getDomainName(httpSource):
     startPos = 0
     iteration = 0
+    for char in httpSource:
+        if char == ':':
+            startPos = iteration + 3
+        iteration +=1
+    return httpSource[startPos:]
+
+def receiveDnsData():
+
     try:
         httpSource = httpAddress.get()
-        for char in httpSource:
-            if char == ':':
-                startPos = iteration + 3
-            iteration +=1
         outputSource.delete(1.0,END)
         if isRegistered(httpSource):
-            whoisInfo = whois.whois(httpSource[startPos:])
+            whoisInfo = whois.whois(getDomainName(httpSource))
             outputSource.insert(END,'Whois info \n')
             outputSource.insert(END,whoisInfo.text)
             outputSource.insert(END,'\n')
@@ -200,7 +226,7 @@ def receiveDnsData():
             resolver = dns.resolver.Resolver()
             for RecType in DNSRecordTypes:
                 try:
-                    answers = resolver.resolve(httpSource[startPos:], RecType)
+                    answers = resolver.resolve(getDomainName(httpSource), RecType)
                 except dns.resolver.NoAnswer:
                     continue
                 
