@@ -163,14 +163,14 @@ def createWordlist():
         wordList = []
         if charNum == 0:
             outputSource.delete('1.0',END)
-            output = re.findall(r'\w+', BeautifulSoup(resp.content.decode(),'html.parser').get_text())
+            output = re.findall(r'\w+', BeautifulSoup(resp.content.decode(getCharCoding(resp.headers['content-type'])),'html.parser').get_text())
             for i in range(len(output)):
                 if output[i] not in wordList:
                     wordList.append(output[i])
                     outputSource.insert(END,output[i]+'\n')
         else:
             outputSource.delete('1.0',END)
-            output = re.findall(r'\w+', BeautifulSoup(resp.content.decode(),'html.parser').get_text())
+            output = re.findall(r'\w+', BeautifulSoup(resp.content.decode(getCharCoding(resp.headers['content-type'])),'html.parser').get_text())
             for i in range(len(output)):
                 if len(output[i]) >= charNum:
                     if output[i] not in wordList:
