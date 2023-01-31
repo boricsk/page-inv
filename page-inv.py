@@ -39,7 +39,8 @@ def main():
                   'disk':'disk.png',
                   'dns':'fingerprint.png',
                   'qrcode':'qrcode.png',
-                  'certificate':'cert.png'}
+                  'certificate':'cert.png',
+                  'link':'link.png'}
     photoimages = []
     for key, val in imageFiles.items():
         _path = imgPath / val
@@ -88,6 +89,17 @@ def main():
     )
     btnFunc5.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
+    #show links bttn
+    btnFunc6 = tb.Button(
+        master = bttnBar,
+        text="Show links",
+        compound=LEFT,
+        command=showLinks,
+        style="solid",
+        image="link"
+    )
+    btnFunc6.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    
     #save output bttn
     btnFunc4 = tb.Button(
         master = bttnBar,
@@ -129,6 +141,19 @@ def main():
     
     root.mainloop()
 
+def showLinks():
+
+    try:       
+        outputSource.delete('1.0',END)
+        html = resp.content.decode(getCharCoding(resp.headers['content-type']))
+        soup = BeautifulSoup(html,'html.parser')
+        links = soup.find_all("a")
+        outputSource.insert(END,links)
+        # for i in soup:
+        #     outputSource.insert(END,BeautifulSoup(i)('a')['href'])
+    except Exception as e:
+        Messagebox.show_error(message=f"{e}",title="Navigation error")
+        
 def getCharCoding(contentType):
     startPos = 0
     i=0
@@ -153,7 +178,7 @@ def receiveHTMLData():
         httpSource.insert(END,resp.headers)
         httpSource.insert(END,'\n')
         httpSource.insert(END,'END OF HEADERS\n')
-        httpSource.insert(END,soup)
+        httpSource.insert(END,soup.prettify())
     except Exception as e:
         Messagebox.show_error(message=f"{e}",title="Navigation error")
 
