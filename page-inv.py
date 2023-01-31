@@ -13,7 +13,7 @@ import whois, json
 import dns.resolver
 
 DNSRecordTypes = ["A", "AAAA", "CNAME", "MX", "NS", "SOA", "TXT"]
-
+isDataLoad = False
 def getCertificateInfo():
     try:
         domain = getDomainName(httpAddress.get())
@@ -33,83 +33,110 @@ def main():
     bttnBar = tb.Frame(root, style='primary.TFrame')
     bttnBar.pack(fill=X, pady=1, side=TOP)
     imgPath = Path(__file__).parent / 'assets'
-    #create wordlist bttn
+    
     imageFiles = {'wordlist':'wordlist.png',
                   'comment':'comment-code.png',
                   'disk':'disk.png',
                   'dns':'fingerprint.png',
                   'qrcode':'qrcode.png',
                   'certificate':'cert.png',
-                  'link':'link.png'}
+                  'link':'link.png',
+                  'image1':'image.png'}
+    
     photoimages = []
+    
     for key, val in imageFiles.items():
         _path = imgPath / val
         photoimages.append(tb.PhotoImage(name=key, file=_path))
         
-    btnFunc1 = tb.Button(
+    global btnWordlist
+    btnWordlist = tb.Button(
         master = bttnBar,
         text = "Create wordlist",
         compound = LEFT,
         command = createWordlist,
         style="solid",
-        image='wordlist'
+        image='wordlist',
+        state=DISABLED
     )
-    btnFunc1.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnWordlist.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #show comments bttn
-    btnFunc2 = tb.Button(
+    global btnShowComments
+    btnShowComments = tb.Button(
         master = bttnBar,
         text="Show comments",
         compound=LEFT,
         command=showComments,
         bootstyle="solid",
-        image="comment"
+        image="comment",
+        state=DISABLED
     )
-    btnFunc2.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnShowComments.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #receive DNS information bttn
-    btnFunc3 = tb.Button(
+    global btnDnsInfo
+    btnDnsInfo = tb.Button(
         master = bttnBar,
         text="DNS info",
         compound=LEFT,
         command=receiveDnsData,
         style="solid",
-        image="dns"
+        image="dns",
+        state=DISABLED
     )
-    btnFunc3.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnDnsInfo.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #receive certification information bttn
-    btnFunc5 = tb.Button(
+    global btnShowCert
+    btnShowCert = tb.Button(
         master = bttnBar,
         text="Cert info",
         compound=LEFT,
         command=getCertificateInfo,
         style="solid",
-        image="certificate"
+        image="certificate",
+        state=DISABLED
     )
-    btnFunc5.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnShowCert.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #show links bttn
-    btnFunc6 = tb.Button(
+    global btnShowLinks
+    btnShowLinks = tb.Button(
         master = bttnBar,
         text="Show links",
         compound=LEFT,
         command=showLinks,
         style="solid",
-        image="link"
+        image="link",
+        state=DISABLED
     )
-    btnFunc6.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnShowLinks.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    
+    global btnShowImageLinks
+    btnShowImageLinks = tb.Button(
+        master = bttnBar,
+        text="Show image links",
+        compound=LEFT,
+        command=showImageLinks,
+        style="solid",
+        image="image1",
+        state=DISABLED
+    )
+    btnShowImageLinks.pack(side = LEFT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #save output bttn
-    btnFunc4 = tb.Button(
+    global btnSave
+    btnSave = tb.Button(
         master = bttnBar,
         text="Save output",
         compound=LEFT,
         command=saveOutput,
         style="solid",
-        image="disk"
+        image="disk",
+        state=DISABLED
     )
-    btnFunc4.pack(side = RIGHT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
+    btnSave.pack(side = RIGHT, ipadx = 5, ipady = 5, padx = (1,0),pady = 1)
     
     #input
     optionText = "Enter web address"
@@ -141,15 +168,54 @@ def main():
     
     root.mainloop()
 
+def enableBttns():
+    btnSave.configure(state=NORMAL)
+    btnWordlist.configure(state=NORMAL)
+    btnDnsInfo.configure(state=NORMAL)
+    btnShowCert.configure(state=NORMAL)
+    btnShowComments.configure(state=NORMAL)
+    btnShowLinks.configure(state=NORMAL)
+    btnShowImageLinks.configure(state=NORMAL)
+
+def dissableBttns():
+    btnSave.configure(state=DISABLED)
+    btnWordlist.configure(state=DISABLED)
+    btnDnsInfo.configure(state=DISABLED)
+    btnShowCert.configure(state=DISABLED)
+    btnShowComments.configure(state=DISABLED)
+    btnShowLinks.configure(state=DISABLED)
+    btnShowImageLinks.configure(state=DISABLED)
+
+def showImageLinks():
+    if isDataLoad:
+        try:       
+            imageLinks = []
+            outputSource.delete('1.0',END)
+            html = resp.content.decode(getCharCoding(resp.headers['content-type']))
+            soup = BeautifulSoup(html,'html.parser',parse_only=SoupStrainer('img'))
+            for link in soup:
+                if link.has_attr('src'):
+                    if link['src'] not in imageLinks:
+                        outputSource.insert(END,link['src']+'\n')
+                imageLinks.append(link['src'])
+            imageLinks.clear()
+        except Exception as e:
+            Messagebox.show_error(message=f"{e}",title="Navigation error")
+    else:
+        Messagebox.ok(message='No data!')
+        
 def showLinks():
 
     try:       
+        links = []
         outputSource.delete('1.0',END)
         html = resp.content.decode(getCharCoding(resp.headers['content-type']))
         soup = BeautifulSoup(html,'html.parser',parse_only=SoupStrainer('a'))
         for link in soup:
             if link.has_attr('href'):
-                outputSource.insert(END,link['href']+'\n')
+                if link['href'] not in links:
+                    outputSource.insert(END,link['href']+'\n')
+            links.append(link['href'])
     except Exception as e:
         Messagebox.show_error(message=f"{e}",title="Navigation error")
         
@@ -178,6 +244,7 @@ def receiveHTMLData():
         httpSource.insert(END,'\n')
         httpSource.insert(END,'END OF HEADERS\n')
         httpSource.insert(END,soup.prettify())
+        enableBttns()
     except Exception as e:
         Messagebox.show_error(message=f"{e}",title="Navigation error")
 
