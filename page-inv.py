@@ -1,6 +1,6 @@
 import requests
 import re
-from bs4 import BeautifulSoup, Comment
+from bs4 import BeautifulSoup, Comment, SoupStrainer
 import click
 from traitlets import default
 from tkinter import *
@@ -146,11 +146,10 @@ def showLinks():
     try:       
         outputSource.delete('1.0',END)
         html = resp.content.decode(getCharCoding(resp.headers['content-type']))
-        soup = BeautifulSoup(html,'html.parser')
-        links = soup.find_all("a")
-        outputSource.insert(END,links)
-        # for i in soup:
-        #     outputSource.insert(END,BeautifulSoup(i)('a')['href'])
+        soup = BeautifulSoup(html,'html.parser',parse_only=SoupStrainer('a'))
+        for link in soup:
+            if link.has_attr('href'):
+                outputSource.insert(END,link['href']+'\n')
     except Exception as e:
         Messagebox.show_error(message=f"{e}",title="Navigation error")
         
